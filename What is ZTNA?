@@ -1,1 +1,5 @@
-
+Zero Trust Network Access (ZTNA) is a security model that works on the principle of "never 
+trust, always verify." Unlike old systems that automatically trusted users inside a network, ZTNA 
+treats every access request as suspicious whether it comes from inside or outside the network. It 
+constantly checks and rechecks the identity of every user and device, giving only the minimum 
+access needed to do the job. 
