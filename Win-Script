@@ -1,0 +1,69 @@
+# ================================
+# ZTNA Compliance Check with POPUP
+# ================================
+
+Add-Type -AssemblyName System.Windows.Forms
+
+# Output folder
+$folder = "C:\ZTNA"
+if (!(Test-Path $folder)) {
+    New-Item -ItemType Directory -Path $folder | Out-Null
+}
+
+$outputFile = "$folder\compliance_report.txt"
+
+# Initialize compliance result
+$compliance = @{
+    Antivirus  = $false
+    Updates    = $false
+    Encryption = $false
+    Firewall   = $false
+}
+
+# Check: Antivirus
+try {
+    $avStatus = (Get-MpComputerStatus).AntivirusEnabled
+    if ($avStatus) { $compliance["Antivirus"] = $true }
+} catch { }
+
+# Check: Updates (last 30 days)
+try {
+    $updates = Get-HotFix | Where-Object { $_.InstalledOn -gt (Get-Date).AddDays(-30) }
+    if ($updates.Count -gt 0) { $compliance["Updates"] = $true }
+} catch { }
+
+# Check: BitLocker Encryption (C:)
+try {
+    $encryptionStatus = (Get-BitLockerVolume -MountPoint "C:").VolumeStatus
+    if ($encryptionStatus -eq "FullyEncrypted") { $compliance["Encryption"] = $true }
+} catch { }
+
+# Check: Firewall
+try {
+    $firewallEnabled = (Get-NetFirewallProfile | Where-Object { $_.Enabled -eq $true }).Count -ge 1
+    if ($firewallEnabled) { $compliance["Firewall"] = $true }
+} catch { }
+
+# Evaluate compliance
+$compliant = ($compliance.Values -notcontains $false)
+
+# Prepare report
+$report = @"
+ ZTNA Compliance Check Report:
+---------------------------------
+Antivirus  : $($compliance["Antivirus"])
+Updates    : $($compliance["Updates"])
+Encryption : $($compliance["Encryption"])
+Firewall   : $($compliance["Firewall"])
+
+Result     : $(if ($compliant) {" Device is COMPLIANT"} else {" Device is NOT COMPLIANT"})
+"@
+
+# Output report
+Write-Output $report
+$report | Out-File -FilePath $outputFile -Encoding UTF8
+
+# Show popup if compliant
+if ($compliant) {
+    [System.Windows.Forms.MessageBox]::Show(" Your device is ZTNA Compliant and Safe!", "ZTNA Compliance", 'OK', 'Information')
+}
